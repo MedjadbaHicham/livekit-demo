@@ -1,69 +1,115 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+
+const WORDS = ["blue", "north", "quiet", "river", "amber", "solid", "drift", "level"];
+
+function randomCode() {
+  const word = WORDS[Math.floor(Math.random() * WORDS.length)];
+  const digits = Math.floor(100 + Math.random() * 900);
+  return `${word}-${digits}`;
+}
 
 export default function Home() {
+  const router = useRouter();
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  const [name, setName] = useState("");
+  const [room, setRoom] = useState("");
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraBlocked, setCameraBlocked] = useState(false);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: false })
+      .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) videoRef.current.srcObject = stream;
+        setCameraReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setCameraBlocked(true);
+      });
+
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
+  }, [stopCamera]);
+
+  function join() {
+    const r = room.trim() || randomCode();
+    const n = name.trim() || "guest";
+    stopCamera();
+    router.push(`/room/${encodeURIComponent(r)}?name=${encodeURIComponent(n)}`);
+  }
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.js</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+    <main className="prejoin">
+      <video
+        ref={videoRef}
+        className={cameraReady ? "preview preview-on" : "preview"}
+        autoPlay
+        muted
+        playsInline
+      />
+      <div className="scrim" />
+
+      <section className="panel">
+        <h1>Start a video room</h1>
+        <p className="lede">
+          Pick a code and share it. Anyone who enters the same code lands in your call.
+        </p>
+
+        <div className="fields">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && join()}
+            placeholder="Your name"
+            aria-label="Your name"
+          />
+
+          <div className="code">
+            <input
+              value={room}
+              onChange={(e) => setRoom(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && join()}
+              placeholder="Room code"
+              aria-label="Room code"
             />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <button className="ghost" onClick={() => setRoom(randomCode())}>
+              Pick one for me
+            </button>
+          </div>
         </div>
-      </main>
-    </div>
+
+        <button className="primary" onClick={join}>
+          Join room
+        </button>
+
+        {cameraBlocked && (
+          <p className="hint">
+            Your browser is blocking the camera. Allow it in the address bar, or join
+            anyway and turn it on inside the room.
+          </p>
+        )}
+      </section>
+    </main>
   );
 }
