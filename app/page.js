@@ -39,7 +39,14 @@ export default function Home() {
           return;
         }
         streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
+
+        const el = videoRef.current;
+        if (el) {
+          el.muted = true;
+          el.srcObject = stream;
+          el.play().catch(() => {});
+        }
+
         setCameraReady(true);
       })
       .catch(() => {
