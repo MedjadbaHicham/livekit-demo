@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const WORDS = ["blue", "north", "quiet", "river", "amber", "solid", "drift", "level"];
+const WORDS = ["harbor", "ember", "willow", "cobalt", "mango", "atlas", "juno", "birch"];
 
 function randomCode() {
   const word = WORDS[Math.floor(Math.random() * WORDS.length)];
@@ -18,8 +18,8 @@ export default function Home() {
 
   const [name, setName] = useState("");
   const [room, setRoom] = useState("");
-  const [cameraReady, setCameraReady] = useState(false);
-  const [cameraBlocked, setCameraBlocked] = useState(false);
+  const [status, setStatus] = useState("waking");
+  const [resolution, setResolution] = useState("");
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -38,6 +38,7 @@ export default function Home() {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
+
         streamRef.current = stream;
 
         const el = videoRef.current;
@@ -47,10 +48,16 @@ export default function Home() {
           el.play().catch(() => {});
         }
 
-        setCameraReady(true);
+        const track = stream.getVideoTracks()[0];
+        const settings = track ? track.getSettings() : null;
+        if (settings && settings.width) {
+          setResolution(`${settings.width} \u00d7 ${settings.height}`);
+        }
+
+        setStatus("ready");
       })
       .catch(() => {
-        if (!cancelled) setCameraBlocked(true);
+        if (!cancelled) setStatus("blocked");
       });
 
     return () => {
@@ -66,21 +73,45 @@ export default function Home() {
     router.push(`/room/${encodeURIComponent(r)}?name=${encodeURIComponent(n)}`);
   }
 
+  const statusLabel =
+    status === "ready"
+      ? `camera live   ${resolution}`
+      : status === "blocked"
+        ? "no camera"
+        : "waking the camera";
+
   return (
-    <main className="prejoin">
+    <main className="stage">
       <video
         ref={videoRef}
-        className={cameraReady ? "preview preview-on" : "preview"}
+        className={status === "ready" ? "feed feed-on" : "feed"}
         autoPlay
         muted
         playsInline
       />
+
+      <div className="grade" />
       <div className="scrim" />
+      <div className="grain" />
+
+      <span className="corner tl" />
+      <span className="corner tr" />
+      <span className="corner bl" />
+      <span className="corner br" />
+
+      <div className="hud">
+        <span className={status === "ready" ? "dot dot-live" : "dot"} />
+        {statusLabel}
+      </div>
 
       <section className="panel">
-        <h1>Start a video room</h1>
+        <h1>
+          Get everyone <em>in the room.</em>
+        </h1>
+
         <p className="lede">
-          Pick a code and share it. Anyone who enters the same code lands in your call.
+          Pick a code. Send it to whoever you want. They open a link and they are
+          already there. Nothing to download, nothing to install.
         </p>
 
         <div className="fields">
@@ -88,32 +119,33 @@ export default function Home() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && join()}
-            placeholder="Your name"
+            placeholder="who are you?"
             aria-label="Your name"
           />
 
           <div className="code">
             <input
+              className="mono"
               value={room}
               onChange={(e) => setRoom(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && join()}
-              placeholder="Room code"
+              placeholder="room code"
               aria-label="Room code"
             />
             <button className="ghost" onClick={() => setRoom(randomCode())}>
-              Pick one for me
+              make me one
             </button>
           </div>
         </div>
 
-        <button className="primary" onClick={join}>
-          Join room
+        <button className="go" onClick={join}>
+          Join the room
         </button>
 
-        {cameraBlocked && (
+        {status === "blocked" && (
           <p className="hint">
-            Your browser is blocking the camera. Allow it in the address bar, or join
-            anyway and turn it on inside the room.
+            Your browser is holding the camera back. Allow it from the address bar, or
+            walk in anyway and switch it on once you are inside.
           </p>
         )}
       </section>
