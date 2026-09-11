@@ -32,7 +32,10 @@ export default function Home() {
     let cancelled = false;
 
     navigator.mediaDevices
-      .getUserMedia({ video: true, audio: false })
+      .getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      })
       .then((stream) => {
         if (cancelled) {
           stream.getTracks().forEach((track) => track.stop());
@@ -51,7 +54,7 @@ export default function Home() {
         const track = stream.getVideoTracks()[0];
         const settings = track ? track.getSettings() : null;
         if (settings && settings.width) {
-          setResolution(`${settings.width} \u00d7 ${settings.height}`);
+          setResolution(`${settings.width} × ${settings.height}`);
         }
 
         setStatus("ready");
@@ -75,80 +78,75 @@ export default function Home() {
 
   const statusLabel =
     status === "ready"
-      ? `camera live   ${resolution}`
+      ? `camera on   ${resolution}`
       : status === "blocked"
         ? "no camera"
-        : "waking the camera";
+        : "starting camera";
 
   return (
-    <main className="stage">
-      <video
-        ref={videoRef}
-        className={status === "ready" ? "feed feed-on" : "feed"}
-        autoPlay
-        muted
-        playsInline
-      />
+    <main className="page">
+      <div className="container">
+        <section>
+          <span className="eyebrow">Browser video rooms</span>
 
-      <div className="grade" />
-      <div className="scrim" />
-      <div className="grain" />
+          <h1>Video calls with no install, no sign-up.</h1>
 
-      <span className="corner tl" />
-      <span className="corner tr" />
-      <span className="corner bl" />
-      <span className="corner br" />
+          <p className="lede">
+            Pick a room code and send it to whoever you want. They open the link and
+            they&apos;re already there, camera and mic only.
+          </p>
 
-      <div className="hud">
-        <span className={status === "ready" ? "dot dot-live" : "dot"} />
-        {statusLabel}
-      </div>
+          <div className="fields">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && join()}
+              placeholder="Your name"
+              aria-label="Your name"
+            />
 
-      <section className="panel">
-        <h1>
-          Get everyone <em>in the room.</em>
-        </h1>
+            <div className="code-row">
+              <input
+                className="mono"
+                value={room}
+                onChange={(e) => setRoom(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && join()}
+                placeholder="Room code"
+                aria-label="Room code"
+              />
+              <button type="button" className="btn-ghost" onClick={() => setRoom(randomCode())}>
+                Generate
+              </button>
+            </div>
+          </div>
 
-        <p className="lede">
-          Pick a code. Send it to whoever you want. They open a link and they are
-          already there. Nothing to download, nothing to install.
-        </p>
+          <button type="button" className="btn-primary" onClick={join}>
+            Join the room
+          </button>
 
-        <div className="fields">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && join()}
-            placeholder="who are you?"
-            aria-label="Your name"
+          {status === "blocked" && (
+            <p className="hint">
+              Your browser is holding the camera back. Allow it from the address bar, or
+              join anyway and turn it on once you&apos;re inside.
+            </p>
+          )}
+        </section>
+
+        <div className="preview">
+          <video
+            ref={videoRef}
+            className={status === "ready" ? "feed feed-on" : "feed"}
+            autoPlay
+            muted
+            playsInline
           />
 
-          <div className="code">
-            <input
-              className="mono"
-              value={room}
-              onChange={(e) => setRoom(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && join()}
-              placeholder="room code"
-              aria-label="Room code"
-            />
-            <button className="ghost" onClick={() => setRoom(randomCode())}>
-              make me one
-            </button>
+          <div className="preview-hud">
+            <span className={status === "ready" ? "dot dot-live" : "dot"} />
+            {statusLabel}
           </div>
         </div>
-
-        <button className="go" onClick={join}>
-          Join the room
-        </button>
-
-        {status === "blocked" && (
-          <p className="hint">
-            Your browser is holding the camera back. Allow it from the address bar, or
-            walk in anyway and switch it on once you are inside.
-          </p>
-        )}
-      </section>
+      </div>
     </main>
   );
 }
